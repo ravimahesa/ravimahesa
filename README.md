@@ -1,6 +1,4 @@
 ### Hi there 👋
-# hai aden
-# aku botak doni gondrong
 
 
 
