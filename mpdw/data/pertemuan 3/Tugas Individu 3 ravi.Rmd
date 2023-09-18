@@ -1,0 +1,307 @@
+---
+title: "Tugas Individu 3 - Regresi Lag MPDW"
+author: "Ravi Mahesa Pramudya (G1401211052)"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r}
+library(dLagM)
+library(dynlm)
+library(MLmetrics)
+library(lmtest)
+library(readxl)
+```
+
+# Input data
+
+```{r}
+Repsol_Stock <- read_excel("~/SMT5/MPDW/Repsol Stock.xlsx", 
+    sheet = "Lag")
+View(Repsol_Stock)
+```
+# Pembagian data dan data time series
+```{r}
+train <- Repsol_Stock[1:168,]
+test <- Repsol_Stock[168:210,]
+
+data.ts <- ts(Repsol_Stock)
+train.ts <- ts(train)
+test.ts <- ts(test)
+```
+
+# 1. Model Koyck
+```{r}
+model.koyck <- koyckDlm(x = train$High, y = train$Volume, intercept = TRUE)
+summary(model.koyck)
+AIC(model.koyck)
+BIC(model.koyck)
+```
+
+Dari hasil tersebut, didapat bahwa $y_{t-1}$ memiliki nilai $P-Value<0.05$. 
+Hal ini menunjukkan bahwa $y_{t-1}$ berpengaruh signifikan terhadap
+$y_t$. Adapun model keseluruhannya adalah sebagai berikut 
+$$
+\hat{Y_t}= 9.616e+06+4.562e-01X_t-3.456e+05 Y_{t-1}
+$$ \
+
+### Peramalan dan akurasi model koyck
+```{r}
+# peramalan 40 periode kedepan
+frc.koyck <- forecast(model = model.koyck, x=test$High, h=43)
+frc.koyck
+#akurasi data test
+mape.koyck <- MAPE(frc.koyck$forecasts, test$Volume)
+mape.koyck
+#akurasi data training
+GoF(model.koyck)
+```
+
+# 2. Model Distributed Lag
+
+### dengan lag 3
+
+```{r}
+model.dl <- dlm(x = train$High, y = train$Volume, q=3)
+summary(model.dl)
+AIC(model.dl)
+BIC(model.dl)
+```
+
+Dari hasil diatas, didapat bahwa $P-value$ dari intercept<0.05$. 
+Hal ini menunjukkan bahwa intercept berpengaruh signifikan terhadap $y_t$. Adapun model
+keseluruhan yang terbentuk adalah sebagai berikut
+
+$$
+\hat{Y_t}=12970608- 1614731X_t+2891230X_{t-1}-1326309X_{t-2}-245178X_{t-3}
+$$ 
+
+### Peramalan dan akurasi model Distributed Lag (lag=3)
+
+```{r}
+# peramalan 40 periode kedepan
+frc.dl <- forecast(model = model.dl, x=test$High, h=43)
+frc.dl
+#akurasi data test
+mape.dl <- MAPE(frc.dl$forecasts, test$Volume)
+mape.dl
+#akurasi data training
+GoF(model.dl)
+```
+
+### dengan lag Optimmum
+
+```{r}
+# cari lag optimum
+finiteDLMauto(formula =Volume ~ High,
+              data = data.frame(Repsol_Stock), q.min = 1, q.max = 6,
+              model.type = "dlm", error.type = "AIC", trace = FALSE)
+```
+
+Berdasarkan output tersebut, lag optimum didapatkan ketika lag=6.
+Selanjutnya dilakukan pemodelan untuk lag=6 
+
+### Dengan lag optimum (lag=6)
+```{r}
+model.dl.opt <- dlm(x = train$High, y = train$Volume, q=6)
+summary(model.dl.opt)
+AIC(model.dl.opt)
+BIC(model.dl.opt)
+```
+Dari hasil diatas, didapat bahwa $P-value$ dari intercept<0.05$. 
+Hal ini menunjukkan bahwa intercept berpengaruh signifikan terhadap $y_t$. Adapun model
+keseluruhan yang terbentuk adalah sebagai berikut 
+$$
+\hat{Y_t}=13856046-1775847 X_t+ 2887489X_{t-1}-1384092X_{t-2}+1712544X_{t-3}-1865203X_{t-4}-1362467X_{t-5}+1428204X_{t-6}
+$$ 
+
+### Peramalan dan akurasi model Distributed Lag optimum (lag=6)
+```{r}
+# peramalan 40 periode kedepan
+frc.dl.opt <- forecast(model = model.dl.opt, x=test$High, h=43)
+frc.dl.opt
+#akurasi data test
+mape.dl.opt <- MAPE(frc.dl.opt$forecasts, test$Volume)
+mape.dl.opt
+#akurasi data training
+GoF(model.dl.opt)
+```
+
+# 3. Model Autoregressive
+
+### Dengan lag p=1 dan q=1
+
+```{r}
+model.ardl <- ardlDlm(x = train$High, y = train$Volume, p = 1 , q = 1)
+summary(model.ardl)
+AIC(model.ardl)
+BIC(model.ardl)
+```
+
+Hasil di atas menunjukkan bahwa peubah $y_{t-1}$,
+hasil uji t menunjukkan nilai-p pada peubah $<0.05$ Hal ini menunjukkan
+bahwa peubah $y_{t-1}$ berpengaruh signifikan terhadap
+$y_t$, sementara $x_t$ dan $x_{t-1}$ tidak berpengaruh signifikan terhadap $y_t$.
+Model keseluruhannya adalah sebagai berikut:
+
+$$
+\hat{Y}=7.999e+06+ 3.008e+06X_t-3.253e+06X_{t-1}+4.844e-01Y_{t-1}
+$$ 
+
+### Peramalan dan akurasi model Autoregressive dengan lag (p=1 dan q=1)
+
+```{r}
+# peramalan 40 periode kedepan
+frc.ardl <- forecast(model = model.ardl, x=test$High, h=43)
+frc.ardl
+#akurasi data test
+mape.ardl <- MAPE(frc.ardl$forecasts, test$Volume)
+mape.ardl
+#akurasi data training
+GoF(model.ardl)
+```
+
+Berdasarkan akurasi di atas, terlihat bahwa nilai MAPE keduanya tidak
+jauh berbeda. Artinya, model regresi dengan distribusi lag ini
+tidak `overfitted` atau `underfitted`
+
+### Autoregressive dengan lag optimum
+
+```{r}
+#penentuan lag optimum
+model.ardl.opt <- ardlBoundOrders(data = data.frame(Repsol_Stock), ic = "AIC", formula = Volume ~ High )
+min_p=c()
+for(i in 1:6){
+  min_p[i]=min(model.ardl.opt$Stat.table[[i]])
+}
+q_opt=which(min_p==min(min_p, na.rm = TRUE))
+p_opt=which(model.ardl.opt$Stat.table[[q_opt]] == 
+              min(model.ardl.opt$Stat.table[[q_opt]], na.rm = TRUE))
+data.frame("q_optimum" = q_opt, "p_optimum" = p_opt, 
+           "AIC"=model.ardl.opt$min.Stat)
+```
+
+Dari tabel di atas, dapat terlihat bahwa nilai AIC terendah didapat
+ketika $p=15$ dan $q=1$, yaitu sebesar `6496.877`. Artinya, model
+autoregressive optimum didapat ketika $p=15$ dan $q=1$.
+
+Selanjutnya dapat dilakukan pemodelan dengan nilai $p$ dan $q$ optimum
+seperti inisialisasi di langkah sebelumnya. 
+
+### Dengan lag optimum (p=15 dan q=1)
+
+```{r}
+model.ardl.opt1 <- ardlDlm(x = train$High, y = train$Volume, p = 15 , q = 1)
+summary(model.ardl.opt1)
+AIC(model.ardl.opt1)
+BIC(model.ardl.opt1)
+```
+
+Hasil di atas menunjukkan bahwa peubah
+$y_{t-1}$, hasil uji t menunjukkan nilai-p pada peubah $<0.05$ Hal ini menunjukkan bahwa peubah
+$y_{t-1}$ berpengaruh signifikan
+terhadap $y_t$. Model keseluruhannya adalah sebagai berikut:
+
+$$
+\hat{Y}=1.316e+06+ 1.804e+06X_t+ 3.919e+05X_{t-1} -3.023e+06X_{t-2}+ 2.531e+06X_{t-3} -3.985e+06X_{t-4}+ 1.017e+06X_{t-5}+ 3.755e+06X_{t-6} -2.710e+06X_{t-7}+ 2.166e+06X_{t-8} -1.861e+06X_{t-9} -1.268e+06X_{t-10} +1.178e+06X_{t-11} -5.278e+05X_{t-12} +2.115e+06X_{t-13} -1.419e+05X_{t-14} -1.134e+06X_{t-15} 3.659e-01Y_{t-1}
+$$ 
+
+### Peramalan dan akurasi model Autoregressive dengan lag optimum (p=15 dan q=1)
+
+```{r}
+# peramalan 40 periode kedepan
+frc.ardl.opt <- forecast(model = model.ardl.opt1, x=test$High, h=43)
+frc.ardl.opt
+#akurasi data test
+mape.ardl.opt <- MAPE(frc.ardl.opt$forecasts, test$Volume)
+mape.ardl.opt
+#akurasi data training
+GoF(model.ardl.opt1)
+```
+
+Berdasarkan akurasi di atas, terlihat bahwa nilai MAPE keduanya tidak
+jauh berbeda. Artinya, model regresi dengan distribusi lag ini
+tidak `overfitted` atau `underfitted` 
+
+# Pemodelan DLM & ARDL dengan Library `dynlm`
+
+```{r}
+#sama dengan model dlm lag=3
+consw_lm1 <- dynlm(Volume ~ High+L(High)+L(High,2)+L(High,3),data = data.ts)
+summary(consw_lm1)
+#sama dengan dlm lag optimum (lag=6)
+consw_lm2 <- dynlm(Volume ~ High+L(High)+L(High,2)+L(High,3)+L(High,4)+L(High,5)+L(High,6),data = data.ts)
+summary(consw_lm2)
+#sama dengan model ardl p=1 q=1
+consw_lm3 <- dynlm(Volume ~ High+L(High)+L(Volume),data = data.ts)
+summary(consw_lm3)
+#sama dengan ardl lag optimum (p=15 dan q=1)
+consw_lm4 <- dynlm(Volume ~ High+L(Volume)+L(High)+L(High,2)+L(High,3)+L(High,4)+L(High,5)+L(High,6)+L(High,7)+L(High,8)+L(High,9)+L(High,10)+L(High,11)+L(High,12)+L(High,13)+L(High,14)+L(High,15),data = data.ts)
+summary(consw_lm4)
+```
+
+### SSE
+
+```{r}
+deviance(consw_lm1)
+deviance(consw_lm2)
+deviance(consw_lm3)
+deviance(consw_lm4)
+```
+
+### Autokorelasi
+
+```{r}
+#durbin watson
+dwtest(consw_lm1)
+dwtest(consw_lm2)
+dwtest(consw_lm3)
+dwtest(consw_lm4)
+```
+
+#### Heterogenitas
+
+```{r}
+bptest(consw_lm1)
+bptest(consw_lm2)
+bptest(consw_lm3)
+bptest(consw_lm4)
+```
+
+#### Kenormalan
+
+```{r}
+shapiro.test(residuals(consw_lm1))
+shapiro.test(residuals(consw_lm2))
+shapiro.test(residuals(consw_lm3))
+shapiro.test(residuals(consw_lm4))
+```
+
+## Perbandingan Model
+
+```{r}
+akurasi3 <- matrix(c(mape.koyck, mape.dl, mape.dl.opt, mape.ardl, mape.ardl.opt))
+row.names(akurasi3)<- c("Koyck","DLM 1","DLM optimum","Autoregressive p=1,q=1", "Autoregressive optimum (p=15,q=1)")
+colnames(akurasi3) <- c("MAPE")
+akurasi3
+```
+
+Berdasarkan nilai MAPE, model paling optimum didapat pada Model Autoregressive optimum (p=15,q=1) karena memiliki nilai MAPE yang terkecil.
+
+# Plot perbandingan model
+```{r}
+par(mfrow=c(1,1))
+plot(test$High, test$Volume, type="b", col="black")
+points(test$High, frc.koyck$forecasts,col="red")
+lines(test$High, frc.koyck$forecasts,col="red")
+points(test$High, frc.dl$forecasts,col="blue")
+lines(test$High, frc.dl$forecasts,col="blue")
+points(test$High, frc.dl.opt$forecasts,col="orange")
+lines(test$High, frc.dl.opt$forecasts,col="orange")
+points(test$High, frc.ardl$forecasts,col="green")
+lines(test$High, frc.ardl$forecasts,col="green")
+points(test$High, frc.ardl.opt$forecasts,col="yellow")
+lines(test$High, frc.ardl.opt$forecasts,col="yellow")
+legend("topleft",c("aktual", "Koyck","DLM 1","DLM optimum","Autoregressive p=1,q=1", "Autoregressive optimum (p=15,q=1)"), lty=1, col=c("black","red","blue","orange","green","yellow"), cex=0.5)
+```
