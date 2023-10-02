@@ -36,7 +36,7 @@ plot_suhu
 mean(dtsuhu.ts)
 ```
 
-Plot deret waktu di atas menunjukkan bahwa data stasioner dalam rataan, ditandai dengan data yang menyebar di sekitar nilai tengahnya (18) dan stasioner dalam ragam, ditandai dengan lebar pita yang cenderung sama.
+Plot deret waktu di atas menunjukkan bahwa data stasioner dalam rataan, ditandai dengan data yang menyebar di sekitar nilai tengahnya (27) dan stasioner dalam ragam, ditandai dengan lebar pita yang cenderung sama.
 
 ### Plot ACF
 
@@ -130,7 +130,7 @@ Gambar di atas menunjukkan nilai *rounded value* ($\lambda$) optimum sebesar **4
 #### Bagian 2
 
 ```{r}
-dt_suhu2 <- Data_Suhu$Suhu[1:144] |> ts()
+dt_suhu2 <- Data_Suhu$Suhu[1:125] |> ts()
 mean(dt_suhu2)
 var(dt_suhu2)
 ```
@@ -169,7 +169,7 @@ Berdasarkan uji ADF tersebut, didapat *p-value* sebesar 0.01 yang lebih kecil da
 #### Plot Boxcox
 
 ```{r}
-index2 <- seq(1:144)
+index2 <- seq(1:125)
 bc2 = boxcox(dt_suhu2~index2, lambda = seq(0,9,by=1))
 #Nilai Rounded Lambda
 lambda2 <- bc$x[which.max(bc$y)]
