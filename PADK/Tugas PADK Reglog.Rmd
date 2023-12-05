@@ -1,0 +1,137 @@
+---
+title: "Tugas UAS PADK"
+author: "Ravi Mahesa"
+date: "2023-12-05"
+output:
+   html_document:
+    toc: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+---
+
+### Library
+
+```{r}
+library(readxl)
+library(pscl)
+library(car)
+library(rcompanion)
+library(rms)
+library(lmtest)
+```
+
+# Input data
+
+data yang digunakan ialah :
+$y = event$ 
+$x1 = age$ 
+$x2 = gender$ 
+$x3 = profession$
+$x4 = way$
+
+
+```{r}
+datapadk <- read_excel("Data tugas 2 sesi UAS.xlsx", 
+    sheet = "Data tugas 2 sesi UAS")
+
+## Peubah yang digunakan (y = event, x1 = age, x2 = gender, x3 = industry)
+## jadikan peubah gender dan industry menjadi factor
+datapadk$Y <- as.factor(datapadk$Y)
+datapadk$gender <- as.factor(datapadk$gender)
+datapadk$industry <- as.factor(datapadk$industry)
+datapadk$way <- as.factor(datapadk$way)
+datapadk$greywage <- as.factor(datapadk$greywage)
+datapadk$profession <- as.factor(datapadk$profession)
+head(datapadk)
+```
+
+# Pembuatan model regresi logistik berganda
+
+```{r}
+model1 <- glm(Y~age+gender+industry+way, data = datapadk, family = binomial(link = 'logit'))
+summary(model1)
+```
+
+## Dugaan Peluang beberapa peubah untuk umur 30 tahun
+
+```{r}
+# Model beberapa Peubah
+MBC <- 1.252-0.014*30
+MBB <- 1.172-0.014*30
+MIC <- -0.39-0.014*30
+MIB <- -0.467-0.014*30
+FBC <- 1.241-0.014*30
+FBB <- 1.092-0.014*30
+FIC <- -0.401-0.014*30
+FIB <- -0.478-0.014*30
+
+# Peluang
+PMBC <- exp(MBC)/(1+exp(MBC))
+PMBB <- exp(MBB)/(1+exp(MBB))
+PMIC <- exp(MIC)/(1+exp(MIC))
+PMIB <- exp(MIB)/(1+exp(MIB))
+PFBC <- exp(FBC)/(1+exp(FBC))
+PFBB <- exp(FBB)/(1+exp(FBB))
+PFIC <- exp(FIC)/(1+exp(FIC))
+PFIB <- exp(FIB)/(1+exp(FIB))
+Dugaan_Peluang <- data.frame( "Kategori" =c("Male Banks Car","Male Banks Bus","Male IT Car","Male IT Bus","Female Banks Car","Female Banks Bus","Female IT Car","Female IT Bus"),"Dugaan" = c(PMBC,PMBB,PMIC,PMIB,PFBC,PFBB,PFIC,PFIB))
+Dugaan_Peluang
+```
+
+# UJI Diagnostik
+
+## Multikolinieritas
+
+```{r}
+  vif(model1)
+```
+
+## UJI Wald
+
+```{r}
+Anova(model1, test="Wald")
+# Tolak H0
+```
+
+# Seleksi model
+
+## Forward
+
+```{r}
+model_forward <- step(model1, direction = "forward")
+summary(model_forward)
+```
+
+## Backward
+
+```{r}
+model_backward <- step(model1, direction = "backward")
+summary(model_backward)
+```
+
+## Stepwise (hybrid)
+
+```{r}
+model_hybrid <- step(model1, direction = "both")
+summary(model_hybrid)
+```
+## Perbandingan model stepwise berdasarkan AIC
+
+```{r}
+aic_model <- data.frame( "Metode Stepwise" =c("Model awal","Forward","Backward","Hybrid"),"AIC" = c(model1$aic,model_forward$aic,model_backward$aic,model_hybrid$aic))
+dplyr::arrange(.data=aic_model, AIC)
+```
+
+# Uji kelayakan model
+
+## Uji hosmer Lemeshow
+
+```{r}
+library(generalhoslem)
+logitgof(datapadk$Y,fitted(model_backward))
+#Terima H0
+logitgof(datapadk$Y,fitted(model_hybrid))
+#Terima H0
+```
+
